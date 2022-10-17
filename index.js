@@ -3,6 +3,7 @@ const app = express()
 const cors = require('cors')
 const bodyParser = require('body-parser')
 const mongoose = require('mongoose')
+const { query } = require('express')
 
 require('dotenv').config()
 
@@ -41,10 +42,15 @@ const User = mongoose.model('User', userSchema)
 
 // Excerciese Schema
 const exerciceSchema = new mongoose.Schema({
+  userId:{
+    type: String,
+    unique: false,
+    required: false
+  },
   username: {
     type: String,
     required: true,
-    unique: true
+    unique: false
   },
   description: {
     type: String,
@@ -112,16 +118,16 @@ app.post("/api/users/:_id/exercises", (req, res)=>{
   let date = req.body.date
 
   if(!date){
-    date = new Date().toString()
+    date = new Date().toUTCString()
   }
-  else{
-    date = Date(date)
-  }
+
+  date = new Date(date).toUTCString()
 
   User.findById(userId, (err, document)=>{
     if(err) res.status(400).json({error: err.message})
 
     const newExercise = new Excercise({
+      userId: document._id.toString(),
       username: document.username,
       description: description,
       duration: duration,
@@ -132,9 +138,9 @@ app.post("/api/users/:_id/exercises", (req, res)=>{
     .then((data)=>{
       console.log('DATA DESPUES DE GUARDAR: ', data)
       res.json({
-        _id: document._id,
+        _id: document._id.toString(),
         username: data.username,
-        date: date,
+        date: data.date,
         duration: data.duration,
         description: data.description
       })
@@ -143,9 +149,79 @@ app.post("/api/users/:_id/exercises", (req, res)=>{
       res.status(400).json({error: err.message})
     })
   })
-
 })
- 
+
+// Get logs
+/*
+Response object:
+{
+  "_id": "634da80400a0e809ea0ad3e1",
+  "username": "kolok",
+  "count": 1,
+  "log": [
+    {
+      "description": "piernas",
+      "duration": 10,
+      "date": "Thu Jun 23 2022"
+    }
+  ]
+}
+*/ 
+
+app.get("/api/users/:id/logs", (req, res) => {
+  const userId = req.params.id
+  const limit = Number(req.query.limit)
+  const from = Number(req.query.from)
+  const to = Number(req.query.to)
+
+  console.log('from and to: ', from, to)
+
+  User.findById(userId)
+  .exec()
+  .then((doc)=>{
+    console.log('USER RETRIEVED -> ', doc)
+
+    let userId = doc._id.toString()
+
+    if(from && to){
+      let query = {
+        userId: userId,
+        date: {$gt: from, $lt: to}
+      }
+      Excercise.find(query)
+      .limit(limit)
+      .exec((err, excerciseDocs) => {
+        if(err) res.status(400).json({error: err.message})
+        console.log(excerciseDocs)
+        res.json({
+          _id: doc._id.toString(),
+          username: doc.username,
+          count: excerciseDocs.length,
+          log: excerciseDocs
+        })
+      })
+    }
+    else{
+      Excercise.find({userId: userId})
+      .exec()
+      .then((excerciseDocs)=>{
+        if(!excerciseDocs){
+          res.json({message: "User does not have excercises"})
+        }
+        res.json({
+          _id: doc._id,
+          username: doc.username,
+          count: excerciseDocs.length,
+          log: excerciseDocs
+        })
+      })
+    }
+  })
+  .catch(err =>{
+    console.log('ERROR WHILE SENDING INFO -> ', err)
+    res.status(400).json({error: err.message})
+  } )
+}) 
 
 const listener = app.listen(process.env.PORT || 3000, () => {
   console.log('Your app is listening on port ' + listener.address().port)
