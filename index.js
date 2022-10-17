@@ -29,7 +29,12 @@ app.use(bodyParser.json())
 
 // User Schema
 const userSchema = new mongoose.Schema({
-  username: String
+  username: {
+    type: String,
+    required: true,
+    unique: true,
+    trim: true
+  }
 })
 
 const User = mongoose.model('User', userSchema)
@@ -39,7 +44,7 @@ const exerciceSchema = new mongoose.Schema({
   username: {
     type: String,
     required: true,
-    unique: false
+    unique: true
   },
   description: {
     type: String,
@@ -71,11 +76,74 @@ app.post("/api/users", (req, res, next)=>{
   })
   newUser.save()
   .then(user => res.json({
-    username: username
+    username: username,
+    _id: user._id
   }))
   .catch(error => res.status(400).json({
     error: error.message
   }))
+})
+
+// get all users
+app.get("/api/users", (req,res)=>{
+  User.find().exec((err, users)=>{
+    if(err) res.status(400).json({message: err.message})
+    res.json(users)
+  })
+})
+
+// Add excercise to user
+
+/* Response object:
+{
+  "_id": "634cd6550abd4209c4114ca0",
+  "username": "mantos",
+  "date": "Thu Jun 23 2022",
+  "duration": 10,
+  "description": "brazos"
+}
+*/
+
+app.post("/api/users/:_id/exercises", (req, res)=>{
+  const userId = req.params._id
+
+  const description = req.body.description
+  const duration = req.body.duration
+  let date = req.body.date
+
+  if(!date){
+    date = new Date().toString()
+  }
+  else{
+    date = Date(date)
+  }
+
+  User.findById(userId, (err, document)=>{
+    if(err) res.status(400).json({error: err.message})
+
+    const newExercise = new Excercise({
+      username: document.username,
+      description: description,
+      duration: duration,
+      date: date
+    })
+
+    newExercise.save()
+    .then((data)=>{
+      console.log('DATA DESPUES DE GUARDAR: ', data)
+      res.json({
+        _id: document._id,
+        username: data.username,
+        date: date,
+        duration: data.duration,
+        description: data.description
+      })
+    })
+    .catch(err => {
+      res.status(400).json({error: err.message})
+    })
+  })
+
 })
  
 
