@@ -63,7 +63,7 @@ const exerciceSchema = new mongoose.Schema({
     unique: false
   },
   date: {
-    type: Date,
+    type: String,
     required: false
   },
 })
@@ -139,7 +139,7 @@ app.post("/api/users/:_id/exercises", (req, res)=>{
       res.json({
         _id: document._id.toString(),
         username: data.username,
-        date: data.date.toUTCString(),
+        date: data.date,
         duration: data.duration,
         description: data.description
       })
