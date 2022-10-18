@@ -63,7 +63,7 @@ const exerciceSchema = new mongoose.Schema({
     unique: false
   },
   date: {
-    type: String,
+    type: Date,
     required: false
   },
 })
@@ -117,21 +117,20 @@ app.post("/api/users/:_id/exercises", (req, res)=>{
   const duration = req.body.duration
   let date = req.body.date
 
-  if(!date){
-    date = new Date().toUTCString()
-  }
+  // if(!date){
+  //   date = new Date()
+  // }
 
-  date = new Date(date).toUTCString()
+  // date = new Date(date)
 
   User.findById(userId, (err, document)=>{
     if(err) res.status(400).json({error: err.message})
 
     const newExercise = new Excercise({
-      userId: document._id.toString(),
-      username: document.username,
+      userId: userId,
       description: description,
       duration: duration,
-      date: date
+      date: new Date(date),
     })
 
     newExercise.save()
@@ -139,9 +138,9 @@ app.post("/api/users/:_id/exercises", (req, res)=>{
       res.json({
         _id: document._id.toString(),
         username: data.username,
-        date: data.date,
-        duration: data.duration,
-        description: data.description
+        date: date.toDataString(),
+        duration: duration,
+        description: description
       })
     })
     .catch(err => {
@@ -175,49 +174,50 @@ app.get("/api/users/:id/logs", (req, res) => {
 
   console.log('from and to: ', from, to)
 
-  User.findById(userId)
-  .exec()
-  .then((doc)=>{
-
-    let userId = doc._id.toString()
-
-    if(from && to){
-      let query = {
-        userId: userId,
-        date: {$gt: from, $lt: to}
-      }
-      Excercise.find(query)
-      .limit(limit)
-      .exec((err, excerciseDocs) => {
-        if(err) res.status(400).json({error: err.message})
-        res.json({
-          _id: doc._id.toString(),
-          username: doc.username,
-          count: excerciseDocs.length,
-          log: excerciseDocs
-        })
-      })
+  User.findById(userId, (err, userData)=>{
+    if(err || !userData){
+      res.send("Could not found user")
     }
     else{
-      Excercise.find({userId: userId})
-      .exec()
-      .then((excerciseDocs)=>{
-        if(!excerciseDocs){
-          res.json({message: "User does not have excercises"})
+      let dateObj = {}
+
+      if(from){
+        dateObj["$gte"] = new Date(from)
+      }
+      if(to){
+        dateObj["$lte"] = new Date(to)
+      }
+
+      let filter = {
+        userId: userId
+      }
+
+      if(from || to){
+        filter.date = dateObj
+      }
+
+      let nonNullLimit = limit ?? 500
+
+      Excercise.find(filter).limit(+nonNullLimit)
+      .exec((err, data)=>{
+        if(err || !data){
+          res.json([])
         }
-        res.json({
-          _id: doc._id,
-          username: doc.username,
-          count: excerciseDocs.length,
-          log: excerciseDocs
-        })
+        else{
+          const count = data.length
+          const rawLog = data
+          const {username, _id} = userData
+          const log= rawLog.map((l) => ({
+            description: l.description,
+            duration: l.duration,
+            date: l.date.toDateString()
+          }))
+          res.json({username, count, _id, log})
+        }
       })
+
     }
   })
-  .catch(err =>{
-    console.log('ERROR WHILE SENDING INFO -> ', err)
-    res.status(400).json({error: err.message})
-  } )
 }) 
 
 const listener = app.listen(process.env.PORT || 3000, () => {
