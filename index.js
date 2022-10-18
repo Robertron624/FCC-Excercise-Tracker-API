@@ -136,11 +136,10 @@ app.post("/api/users/:_id/exercises", (req, res)=>{
 
     newExercise.save()
     .then((data)=>{
-      console.log('DATA DESPUES DE GUARDAR: ', data)
       res.json({
         _id: document._id.toString(),
         username: data.username,
-        date: data.date,
+        date: data.date.toUTCString(),
         duration: data.duration,
         description: data.description
       })
@@ -179,7 +178,6 @@ app.get("/api/users/:id/logs", (req, res) => {
   User.findById(userId)
   .exec()
   .then((doc)=>{
-    console.log('USER RETRIEVED -> ', doc)
 
     let userId = doc._id.toString()
 
@@ -192,7 +190,6 @@ app.get("/api/users/:id/logs", (req, res) => {
       .limit(limit)
       .exec((err, excerciseDocs) => {
         if(err) res.status(400).json({error: err.message})
-        console.log(excerciseDocs)
         res.json({
           _id: doc._id.toString(),
           username: doc.username,
