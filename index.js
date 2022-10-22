@@ -41,7 +41,6 @@ app.post("/api/users", (req, res) => {
   })
   newUser.save((err, data) => {
     if(err || !data){
-      console.log("ERROR WHILE SAVING USER -> ", err)
       res.send("There was an error saving the user")
     }else{
       res.json(data)
@@ -89,12 +88,6 @@ app.post("/api/users/:id/exercises", (req, res) => {
 
 app.get("/api/users/:id/logs", (req, res) => {
   const { from, to, limit } = req.query;
-
-  console.log("LIMIT -> ", limit)
-  
-  console.log("FROM -> ", from)
-
-  console.log("TO -> ", limit)
 
   const {id} = req.params;
   
