@@ -36,12 +36,12 @@ app.get('/', (req, res) => {
 
 
 app.post("/api/users", (req, res) => {
-  console.log(`req.body`, req.body)
   const newUser = new User({
     username: req.body.username
   })
   newUser.save((err, data) => {
     if(err || !data){
+      console.log("ERROR WHILE SAVING USER -> ", err)
       res.send("There was an error saving the user")
     }else{
       res.json(data)
@@ -50,8 +50,14 @@ app.post("/api/users", (req, res) => {
 })
 
 app.post("/api/users/:id/exercises", (req, res) => {
+
   const id = req.params.id
-  const {description, duration, date} = req.body
+  let {description, duration, date} = req.body
+
+  if(!date){
+    date = new Date()
+  }
+  
   User.findById(id, (err, userData) => {
     if(err || !userData) {
       res.send("Could not find user");
@@ -67,10 +73,11 @@ app.post("/api/users/:id/exercises", (req, res) => {
           res.send("There was an error saving this exercise")
         }else {
           const { description, duration, date, _id} = data;
+
           res.json({
             username: userData.username,
-            description,
-            duration,
+            description: description,
+            duration: duration,
             date: date.toDateString(),
             _id: userData.id
           })
@@ -82,7 +89,15 @@ app.post("/api/users/:id/exercises", (req, res) => {
 
 app.get("/api/users/:id/logs", (req, res) => {
   const { from, to, limit } = req.query;
+
+  console.log("LIMIT -> ", limit)
+  
+  console.log("FROM -> ", from)
+
+  console.log("TO -> ", limit)
+
   const {id} = req.params;
+  
   User.findById(id, (err, userData) => {
     if(err || !userData) {
       res.send("Could not find user");
@@ -113,7 +128,14 @@ app.get("/api/users/:id/logs", (req, res) => {
             duration: l.duration,
             date: l.date.toDateString()
           }))
-          res.json({username, count, _id, log})
+
+          console.table({
+            username,
+            count,
+            _id,
+          })
+          
+          res.json({username:username, count:count, _id: _id.toString(), log: log})
         }
       })
     } 
@@ -129,9 +151,6 @@ app.get("/api/users", (req, res) => {
     }
   })
 })
-
-
-
 
 
 const listener = app.listen(process.env.PORT || 3000, () => {
